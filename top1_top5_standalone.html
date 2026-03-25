@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top-1 vs Top-5 Adversarial Attack</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .page{width:100%;max-width:860px}
+  h1{font-size:20px;font-weight:500;color:#1a1a18;margin-bottom:4px}
+  .page-sub{font-size:13px;color:#888780;margin-bottom:20px}
+  .panels{display:flex;gap:16px;flex-wrap:wrap}
+  .panel{background:#fff;border:0.5px solid #d3d1c7;border-radius:12px;overflow:hidden;flex:1;min-width:280px}
+  .panel-header{padding:14px 16px 10px;border-bottom:0.5px solid #d3d1c7}
+  .panel-title{font-size:14px;font-weight:500;color:#1a1a18;margin-bottom:2px}
+  .badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+  .badge-1{background:#FAECE7;color:#712B13}
+  .badge-5{background:#FCEBEB;color:#791F1F}
+  .panel-sub{font-size:12px;color:#888780}
+  .bars{padding:12px 16px 6px}
+  .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .rank{font-size:11px;color:#b4b2a9;width:14px;text-align:right;flex-shrink:0}
+  .lbl{font-size:12px;color:#5f5e5a;width:56px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .track{flex:1;height:20px;background:#f1efe8;border-radius:4px;overflow:hidden}
+  .fill{height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+  .fill-correct{background:#1D9E75}
+  .fill-other{background:#B4B2A9}
+  .fill-val{font-size:11px;font-weight:500}
+  .val-correct{color:#085041}
+  .val-other{color:#444441}
+  .tag{font-size:10px;padding:1px 6px;border-radius:10px;flex-shrink:0}
+  .tag-in{background:#E1F5EE;color:#085041}
+  .tag-out{background:#FCEBEB;color:#791F1F}
+  .legend{display:flex;gap:12px;padding:2px 16px 10px;flex-wrap:wrap}
+  .leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#888780}
+  .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .verdict{margin:0 16px 14px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5}
+  .v-ok{background:#E1F5EE;color:#085041}
+  .v-partial{background:#FAEEDA;color:#633806}
+  .v-fail{background:#FCEBEB;color:#791F1F}
+  .controls{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap}
+  .ctrl{flex:1;min-width:200px;background:#fff;border:0.5px solid #d3d1c7;border-radius:8px;padding:12px 14px}
+  .ctrl-label{font-size:12px;color:#5f5e5a;margin-bottom:6px}
+  .ctrl-label strong{font-weight:500;color:#1a1a18}
+  .ctrl-label .unit{font-size:11px;color:#b4b2a9;margin-left:4px}
+  input[type=range]{width:100%;accent-color:#378ADD;cursor:pointer}
+  .ticks{display:flex;justify-content:space-between;font-size:10px;color:#b4b2a9;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Top-1 vs Top-5 adversarial attack</h1>
+  <p class="page-sub">Drag the sliders to simulate FGSM perturbation strength (ε). True label: "cat"</p>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Top-1 attack <span class="badge badge-1">weaker goal</span></div>
+        <div class="panel-sub">Push "cat" out of the #1 position</div>
+      </div>
+      <div class="bars" id="bars1"></div>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#1D9E75"></div>correct label</div>
+        <div class="leg"><div class="leg-dot" style="background:#B4B2A9"></div>other classes</div>
+      </div>
+      <div class="verdict v-ok" id="v1"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Top-5 attack <span class="badge badge-5">harder goal</span></div>
+        <div class="panel-sub">Expel "cat" from the top 5 entirely</div>
+      </div>
+      <div class="bars" id="bars2"></div>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#1D9E75"></div>correct label</div>
+        <div class="leg"><div class="leg-dot" style="background:#B4B2A9"></div>other classes</div>
+      </div>
+      <div class="verdict v-ok" id="v2"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <div class="ctrl-label">Top-1 attack strength: <strong id="lbl1">ε = 8</strong><span class="unit">/ 255</span></div>
+      <input type="range" min="0" max="16" step="1" value="8" id="sl1">
+      <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>16</span></div>
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-label">Top-5 attack strength: <strong id="lbl2">ε = 8</strong><span class="unit">/ 255</span></div>
+      <input type="range" min="0" max="16" step="1" value="8" id="sl2">
+      <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>16</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var LABELS = ["cat","dog","tiger","lion","rabbit","fox","wolf","bear","horse","lynx"];
+
+function getProbs1(t) {
+  var raw = [90-t*75, 5+t*60, 3, 1.5, 0.5, 0.5, 0.3, 0.2, 0.15, 0.1];
+  var sum = raw.reduce(function(a,b){return a+b},0);
+  return raw.map(function(v){return v/sum*100});
+}
+
+function getProbs2(t) {
+  var raw = [90-t*85, 5+t*25, 3+t*20, 1.5+t*18, 0.5+t*10, 0.5+t*5, 0.3+t*2, 0.2, 0.15, 0.1];
+  var sum = raw.reduce(function(a,b){return a+b},0);
+  return raw.map(function(v){return v/sum*100});
+}
+
+function sorted(probs) {
+  return probs.map(function(p,i){return{p:p,i:i,label:LABELS[i]}})
+    .sort(function(a,b){return b.p-a.p});
+}
+
+function renderBars(id, probs) {
+  var s = sorted(probs);
+  var top5 = new Set(s.slice(0,5).map(function(x){return x.i}));
+  var html = '';
+  s.slice(0,7).forEach(function(item, rank) {
+    var isC = item.i === 0;
+    var inT5 = top5.has(item.i);
+    var pct = Math.round(item.p);
+    var fillCls = isC ? 'fill-correct' : 'fill-other';
+    var valCls = isC ? 'val-correct' : 'val-other';
+    var tag = '';
+    if (isC && inT5)  tag = '<span class="tag tag-in">in top-5</span>';
+    if (isC && !inT5) tag = '<span class="tag tag-out">out!</span>';
+    html += '<div class="bar-row">'
+      + '<div class="rank">'+(rank+1)+'</div>'
+      + '<div class="lbl">'+item.label+'</div>'
+      + '<div class="track"><div class="fill '+fillCls+'" style="width:'+Math.max(pct,3)+'%">'
+      + '<span class="fill-val '+valCls+'">'+pct+'%</span></div></div>'
+      + tag + '</div>';
+  });
+  document.getElementById(id).innerHTML = html;
+  return { rank: s.findIndex(function(x){return x.i===0})+1, inTop5: top5.has(0) };
+}
+
+function setVerdict(id, rank, inTop5, mode) {
+  var el = document.getElementById(id);
+  el.className = 'verdict';
+  if (mode === 1) {
+    if (rank === 1) { el.classList.add('v-ok');   el.textContent = 'Attack failed — "cat" is still the #1 prediction.'; }
+    else            { el.classList.add('v-fail');  el.textContent = 'Attack succeeded — "cat" dropped to rank '+rank+'. Top-1 is now wrong.'; }
+  } else {
+    if (rank === 1) { el.classList.add('v-ok');      el.textContent = 'Attack failed — "cat" is still #1.'; }
+    else if (inTop5){ el.classList.add('v-partial'); el.textContent = 'Partial — "cat" fell to rank '+rank+' but is still in the top 5.'; }
+    else            { el.classList.add('v-fail');    el.textContent = 'Attack succeeded — "cat" is completely out of the top 5.'; }
+  }
+}
+
+function update1() {
+  var eps = parseInt(document.getElementById('sl1').value);
+  document.getElementById('lbl1').textContent = 'ε = ' + eps;
+  var t = eps / 16;
+  var r = renderBars('bars1', getProbs1(t));
+  setVerdict('v1', r.rank, r.inTop5, 1);
+}
+
+function update2() {
+  var eps = parseInt(document.getElementById('sl2').value);
+  document.getElementById('lbl2').textContent = 'ε = ' + eps;
+  var t = eps / 16;
+  var r = renderBars('bars2', getProbs2(t));
+  setVerdict('v2', r.rank, r.inTop5, 2);
+}
+
+document.getElementById('sl1').addEventListener('input', update1);
+document.getElementById('sl2').addEventListener('input', update2);
+
+update1();
+update2();
+</script>
+</body>
+</html>
